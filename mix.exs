@@ -30,9 +30,11 @@ defmodule Exrdkafka.MixProject do
 
   defp aliases do
     [
-      "compile.c_src": ["cmd make compile_nif"], # Define a new "compile.c_src" alias
+      # Define a new "compile.c_src" alias
+      "compile.c_src": ["cmd make compile_nif"],
       # compile: ["compile --warnings-as-errors", "compile.c_src"], # Add "compile.c_src" to the "compile" alias
-      clean: ["clean", "cmd make clean_nif"] # Add "cmd make clean_nif" to the "clean" alias
+      # Add "cmd make clean_nif" to the "clean" alias
+      clean: ["clean", "cmd make clean_nif"]
     ]
   end
 end

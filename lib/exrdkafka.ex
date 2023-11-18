@@ -24,7 +24,6 @@ defmodule Exrdkafka do
   def start(), do: start(:temporary)
 
   def start(type) do
-
     case Application.ensure_all_started(:exrdkafka, type) do
       {:ok, _} -> :ok
       other -> other

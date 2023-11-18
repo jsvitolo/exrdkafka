@@ -35,10 +35,20 @@ defmodule Exrdkafka.Clients do
         :ok = Exrdkafka.create_producer(client_id, client_opts)
         Logger.info("producer #{inspect(client_id)} created")
         :ok = create_topics(client_id, topics)
+
       :consumer ->
         group_id = Utils.lookup(:group_id, c)
         default_topics_config = Utils.lookup(:topic_options, c, [])
-        :ok = Exrdkafka.create_consumer_group(client_id, group_id, topics, client_opts, default_topics_config)
+
+        :ok =
+          Exrdkafka.create_consumer_group(
+            client_id,
+            group_id,
+            topics,
+            client_opts,
+            default_topics_config
+          )
+
         Logger.info("consumer #{inspect(client_id)} created")
     end
   end
@@ -48,10 +58,12 @@ defmodule Exrdkafka.Clients do
       {topic_name, topic_opts} ->
         :ok = Exrdkafka.create_topic(client_id, topic_name, topic_opts)
         Logger.info("topic #{inspect(topic_name)} created over client: #{inspect(client_id)}")
+
       topic_name when is_binary(topic_name) ->
         :ok = Exrdkafka.create_topic(client_id, topic_name)
         Logger.info("topic #{inspect(topic_name)} created over client: #{inspect(client_id)}")
     end
+
     create_topics(client_id, t)
   end
 
