@@ -5,9 +5,15 @@ defmodule Exrdkafka.Application do
 
   use Application
 
+  alias Exrdkafka.CacheClient
+
   @impl true
   def start(_type, _args) do
+    :ok = CacheClient.create()
+
     children = [
+      {Exrdkafka.ClientSupervisor, []},
+      {Exrdkafka.Clients, []}
       # Starts a worker by calling: Exrdkafka.Worker.start_link(arg)
       # {Exrdkafka.Worker, arg}
     ]
