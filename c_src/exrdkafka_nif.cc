@@ -131,4 +131,4 @@ static ErlNifFunc nif_funcs[] =
     {"consumer_cleanup", 1, enif_consumer_cleanup}
 };
 
-ERL_NIF_INIT('Elixir.ExrdkafkaNif', nif_funcs, on_nif_load, NULL, on_nif_upgrade, on_nif_unload)
+ERL_NIF_INIT(Elixir.ExrdkafkaNif, nif_funcs, on_nif_load, NULL, on_nif_upgrade, on_nif_unload)
