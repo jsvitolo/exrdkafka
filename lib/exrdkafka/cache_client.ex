@@ -2,7 +2,7 @@ defmodule Exrdkafka.CacheClient do
   @moduledoc """
   Documentation for `Exrdkafka.CacheClient`.
   """
-  @ets_topic_cache :erlkaf_client_cache_tab
+  @ets_topic_cache :exrdkafka_client_cache_tab
 
   def create() do
     :ets.new(@ets_topic_cache, [:set, :named_table, :public, {:read_concurrency, true}])

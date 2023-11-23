@@ -45,7 +45,7 @@ defmodule Exrdkafka.Producer do
      %{
        client_id: client_id,
        ref: producer_ref,
-       dr_cb: dr_callback,
+       callback: dr_callback,
        stats_cb: stats_callback,
        overflow_method: overflow_strategy,
        pqueue: queue,
@@ -97,7 +97,9 @@ defmodule Exrdkafka.Producer do
     end
   end
 
-  def handle_info({:delivery_report, _delivery_status, _message}, state) do
+  def handle_info({:delivery_report, delivery_status, message}, %{callback: callback} = state) do
+    call_callback(callback, delivery_status, message)
+
     {:noreply, state}
   end
 
@@ -107,6 +109,7 @@ defmodule Exrdkafka.Producer do
 
   def handle_info(info, state) do
     Logger.error("received unknown message: #{inspect(info)}")
+
     {:noreply, state}
   end
 
@@ -129,12 +132,13 @@ defmodule Exrdkafka.Producer do
 
   def code_change(_old_vsn, state, _extra), do: {:ok, state}
 
-  # defp call_callback(:undefined, _delivery_status, _message), do: :ok
+  defp call_callback(:undefined, _delivery_status, _message), do: :ok
 
-  # defp call_callback(c, delivery_status, message) when is_function(c, 2),
-  #   do: c.(delivery_status, message)
+  defp call_callback(callback, delivery_status, message) when is_function(callback, 2),
+    do: callback.(delivery_status, message)
 
-  # defp call_callback(c, delivery_status, message), do: c.delivery_report(delivery_status, message)
+  defp call_callback(callback, delivery_status, message),
+    do: callback.delivery_report(delivery_status, message)
 
   defp schedule_consume_queue(false, timeout),
     do: Process.send_after(self(), :consume_queue, timeout)
