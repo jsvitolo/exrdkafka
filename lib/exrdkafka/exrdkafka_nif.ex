@@ -27,6 +27,7 @@ defmodule ExrdkafkaNif do
   end
 
   def get_metadata(_client_ref), do: raise_not_loaded(__ENV__.line)
+  def get_partitions_count(_client_ref, _topic_name), do: raise_not_loaded(__ENV__.line)
 
   def consumer_new(_group_id, _topics, _client_config, _topics_config),
     do: raise_not_loaded(__ENV__.line)

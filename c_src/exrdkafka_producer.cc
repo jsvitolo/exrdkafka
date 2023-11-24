@@ -329,6 +329,46 @@ ERL_NIF_TERM enif_get_metadata(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
     return enif_make_tuple2(env, ATOMS.atomOk, metadata_map);
 }
 
+ERL_NIF_TERM enif_get_partitions_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    UNUSED(argc);
+
+    exrdkafka_data* data = static_cast<exrdkafka_data*>(enif_priv_data(env));
+
+    enif_producer* producer;
+    std::string topic_name;
+
+    if(!enif_get_resource(env, argv[0], data->res_producer,  reinterpret_cast<void**>(&producer)))
+        return make_badarg(env);
+
+    if(!get_string(env, argv[1], &topic_name))
+        return make_badarg(env);
+
+    rd_kafka_topic_t* topic = rd_kafka_topic_new(producer->kf, topic_name.c_str(), NULL);
+    const struct rd_kafka_metadata *metadata;
+    rd_kafka_resp_err_t err;
+
+    err = rd_kafka_metadata(producer->kf, 1, topic, &metadata, 5000);
+    if (err != RD_KAFKA_RESP_ERR_NO_ERROR) {
+        return make_error(env, "failed to get metadata");
+    }
+
+    for (int i = 0; i < metadata->topic_cnt; i++) {
+        const rd_kafka_metadata_topic_t *topic_metadata = &metadata->topics[i];
+
+        if (strcmp(topic_metadata->topic, topic_name.c_str()) == 0) {
+            rd_kafka_metadata_destroy(metadata);
+            rd_kafka_topic_destroy(topic);
+            return enif_make_int(env, topic_metadata->partition_cnt);
+        }
+    }
+
+    rd_kafka_metadata_destroy(metadata);
+    rd_kafka_topic_destroy(topic);
+
+    return ATOMS.atomOk;
+}
+
 ERL_NIF_TERM enif_produce(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     UNUSED(argc);

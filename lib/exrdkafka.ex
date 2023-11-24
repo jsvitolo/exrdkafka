@@ -93,6 +93,14 @@ defmodule Exrdkafka do
     end
   end
 
+  def get_partitions_count(client_id, topic) do
+    case CacheClient.get(client_id) do
+      {:ok, client_ref, _client_pid} -> ExrdkafkaNif.get_partitions_count(client_ref, topic)
+      :undefined -> {:error, :err_undefined_client}
+      error -> error
+    end
+  end
+
   def produce(client_id, topic_name, key, value),
     do: produce(client_id, topic_name, -1, key, value, :undefined, 0)
 
@@ -163,43 +171,72 @@ defmodule Exrdkafka do
     end
   end
 
-  def produce_sync(client_id, topic_name, key, value),
-    do: produce_sync(client_id, topic_name, -1, key, value, :undefined, 0)
+  def produce_sync(
+        client_id,
+        topic_name,
+        key,
+        value,
+        partition \\ -1,
+        headers0 \\ :undefined,
+        timestamp \\ 0
+      ) do
+    headers = to_headers(headers0)
 
-  def produce_sync(client_id, topic_name, key, value, headers),
-    do: produce_sync(client_id, topic_name, -1, key, value, headers, 0)
-
-  def produce_sync(client_id, topic_name, partition, key, value, headers0),
-    do: produce_sync(client_id, topic_name, partition, key, value, headers0, 0)
-
-  def produce_sync(client_id, topic_name, partition, key, value, headers0, timestamp) do
-    case CacheClient.get(client_id) do
-      {:ok, client_ref, _client_pid} ->
-        headers = to_headers(headers0)
-
-        case ExrdkafkaNif.produce_sync(
-               client_ref,
-               topic_name,
-               partition,
-               key,
-               value,
-               headers,
-               timestamp
-             ) do
-          :ok ->
-            :ok
-
-          error ->
-            error
-        end
-
-      :undefined ->
-        {:error, :err_undefined_client}
-
-      error ->
-        error
+    with {:ok, client_ref, _client_pid} <- CacheClient.get(client_id),
+         :ok <-
+           ExrdkafkaNif.produce_sync(
+             client_ref,
+             topic_name,
+             partition,
+             key,
+             value,
+             headers,
+             timestamp
+           ) do
+      :ok
+    else
+      :undefined -> {:error, :err_undefined_client}
+      error -> error
     end
   end
+
+  # def produce_sync(client_id, topic_name, key, value),
+  #   do: produce_sync(client_id, topic_name, -1, key, value, :undefined, 0)
+
+  # def produce_sync(client_id, topic_name, key, value, headers),
+  #   do: produce_sync(client_id, topic_name, -1, key, value, headers, 0)
+
+  # def produce_sync(client_id, topic_name, partition, key, value, headers0),
+  #   do: produce_sync(client_id, topic_name, partition, key, value, headers0, 0)
+
+  # def produce_sync(client_id, topic_name, partition, key, value, headers0, timestamp) do
+  #   case CacheClient.get(client_id) do
+  #     {:ok, client_ref, _client_pid} ->
+  #       headers = to_headers(headers0)
+
+  #       case ExrdkafkaNif.produce_sync(
+  #              client_ref,
+  #              topic_name,
+  #              partition,
+  #              key,
+  #              value,
+  #              headers,
+  #              timestamp
+  #            ) do
+  #         :ok ->
+  #           :ok
+
+  #         error ->
+  #           error
+  #       end
+
+  #     :undefined ->
+  #       {:error, :err_undefined_client}
+
+  #     error ->
+  #       error
+  #   end
+  # end
 
   def get_readable_error(error), do: ErrorConverter.get_readable_error(error)
 
