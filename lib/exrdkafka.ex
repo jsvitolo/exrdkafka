@@ -163,6 +163,15 @@ defmodule Exrdkafka do
     end
   end
 
+  def produce_sync(client_id, topic_name, key, value),
+    do: produce_sync(client_id, topic_name, -1, key, value, :undefined, 0)
+
+  def produce_sync(client_id, topic_name, key, value, headers),
+    do: produce_sync(client_id, topic_name, -1, key, value, headers, 0)
+
+  def produce_sync(client_id, topic_name, partition, key, value, headers0),
+    do: produce_sync(client_id, topic_name, partition, key, value, headers0, 0)
+
   def produce_sync(client_id, topic_name, partition, key, value, headers0, timestamp) do
     case CacheClient.get(client_id) do
       {:ok, client_ref, _client_pid} ->
