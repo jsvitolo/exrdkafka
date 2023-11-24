@@ -93,6 +93,14 @@ defmodule Exrdkafka do
     end
   end
 
+  def get_partitions_count(client_id, topic) do
+    case CacheClient.get(client_id) do
+      {:ok, client_ref, _client_pid} -> ExrdkafkaNif.get_partitions_count(client_ref, topic)
+      :undefined -> {:error, :err_undefined_client}
+      error -> error
+    end
+  end
+
   def produce(client_id, topic_name, key, value),
     do: produce(client_id, topic_name, -1, key, value, :undefined, 0)
 
@@ -154,6 +162,53 @@ defmodule Exrdkafka do
           error ->
             error
         end
+
+      :undefined ->
+        {:error, :err_undefined_client}
+
+      error ->
+        error
+    end
+  end
+
+  def produce_sync(
+        client_id,
+        topic_name,
+        key,
+        value,
+        partition \\ -1,
+        headers0 \\ :undefined,
+        timestamp \\ 0
+      ) do
+    headers = to_headers(headers0)
+
+    with {:ok, client_ref, _client_pid} <- CacheClient.get(client_id),
+         :ok <-
+           ExrdkafkaNif.produce_sync(
+             client_ref,
+             topic_name,
+             partition,
+             key,
+             value,
+             headers,
+             timestamp
+           ) do
+      :ok
+    else
+      :undefined -> {:error, :err_undefined_client}
+      error -> error
+    end
+  end
+
+  def produce_batch(client_id, messages) do
+    case CacheClient.get(client_id) do
+      {:ok, client_ref, _client_pid} ->
+        messages
+        |> Enum.group_by(& &1.topic)
+        |> Enum.each(fn {topic, msgs} ->
+          tuples = Enum.map(msgs, fn msg -> {msg.key, msg.value, msg.partition} end)
+          ExrdkafkaNif.produce_batch(client_ref, topic, tuples)
+        end)
 
       :undefined ->
         {:error, :err_undefined_client}

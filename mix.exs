@@ -34,6 +34,7 @@ defmodule Exrdkafka.MixProject do
       "compile.c_src": ["cmd make compile_nif"],
       # compile: ["compile --warnings-as-errors", "compile.c_src"], # Add "compile.c_src" to the "compile" alias
       # Add "cmd make clean_nif" to the "clean" alias
+      recompile_nif: ["cmd make clean_nif", "cmd make compile_nif"],
       clean: ["clean", "cmd make clean_nif"]
     ]
   end
