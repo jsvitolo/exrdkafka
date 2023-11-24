@@ -552,3 +552,48 @@ ERL_NIF_TERM enif_produce_sync(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
 
     return ATOMS.atomOk;
 }
+
+ERL_NIF_TERM enif_produce_batch(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    UNUSED(argc);
+
+    exrdkafka_data* data = static_cast<exrdkafka_data*>(enif_priv_data(env));
+
+    enif_producer* producer;
+    std::string topic_name;
+
+    if(!enif_get_resource(env, argv[0], data->res_producer,  reinterpret_cast<void**>(&producer)))
+        return make_badarg(env);
+
+    if(!get_string(env, argv[1], &topic_name))
+        return make_badarg(env);
+
+    ERL_NIF_TERM list = argv[2];
+    ERL_NIF_TERM head;
+
+    while(enif_get_list_cell(env, list, &head, &list)) {
+        const ERL_NIF_TERM* tuple;
+        int arity;
+
+        if(!enif_get_tuple(env, head, &arity, &tuple) || arity != 3)
+            return make_badarg(env);
+
+        std::string key;
+        std::string value;
+        int partition;
+
+        if(!get_string(env, tuple[0], &key) || !get_string(env, tuple[1], &value) || !enif_get_int(env, tuple[2], &partition))
+            return make_badarg(env);
+
+        rd_kafka_producev(
+            producer->kf,
+            RD_KAFKA_V_TOPIC(topic_name.c_str()),
+            RD_KAFKA_V_PARTITION(partition),
+            RD_KAFKA_V_MSGFLAGS(RD_KAFKA_MSG_F_COPY),
+            RD_KAFKA_V_KEY((void*)key.data(), key.size()),
+            RD_KAFKA_V_VALUE((void*)value.data(), value.size()),
+            RD_KAFKA_V_END
+        );
+    }
+
+    return ATOMS.atomOk;
+}

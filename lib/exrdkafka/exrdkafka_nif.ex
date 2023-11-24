@@ -26,6 +26,10 @@ defmodule ExrdkafkaNif do
     raise_not_loaded(__ENV__.line)
   end
 
+  def produce_batch(_client_ref, _topic_ref, _messages) do
+    raise_not_loaded(__ENV__.line)
+  end
+
   def get_metadata(_client_ref), do: raise_not_loaded(__ENV__.line)
   def get_partitions_count(_client_ref, _topic_name), do: raise_not_loaded(__ENV__.line)
 

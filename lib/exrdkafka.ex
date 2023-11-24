@@ -200,43 +200,23 @@ defmodule Exrdkafka do
     end
   end
 
-  # def produce_sync(client_id, topic_name, key, value),
-  #   do: produce_sync(client_id, topic_name, -1, key, value, :undefined, 0)
+  def produce_batch(client_id, messages) do
+    case CacheClient.get(client_id) do
+      {:ok, client_ref, _client_pid} ->
+        messages
+        |> Enum.group_by(& &1.topic)
+        |> Enum.each(fn {topic, msgs} ->
+          tuples = Enum.map(msgs, fn msg -> {msg.key, msg.value, msg.partition} end)
+          ExrdkafkaNif.produce_batch(client_ref, topic, tuples)
+        end)
 
-  # def produce_sync(client_id, topic_name, key, value, headers),
-  #   do: produce_sync(client_id, topic_name, -1, key, value, headers, 0)
+      :undefined ->
+        {:error, :err_undefined_client}
 
-  # def produce_sync(client_id, topic_name, partition, key, value, headers0),
-  #   do: produce_sync(client_id, topic_name, partition, key, value, headers0, 0)
-
-  # def produce_sync(client_id, topic_name, partition, key, value, headers0, timestamp) do
-  #   case CacheClient.get(client_id) do
-  #     {:ok, client_ref, _client_pid} ->
-  #       headers = to_headers(headers0)
-
-  #       case ExrdkafkaNif.produce_sync(
-  #              client_ref,
-  #              topic_name,
-  #              partition,
-  #              key,
-  #              value,
-  #              headers,
-  #              timestamp
-  #            ) do
-  #         :ok ->
-  #           :ok
-
-  #         error ->
-  #           error
-  #       end
-
-  #     :undefined ->
-  #       {:error, :err_undefined_client}
-
-  #     error ->
-  #       error
-  #   end
-  # end
+      error ->
+        error
+    end
+  end
 
   def get_readable_error(error), do: ErrorConverter.get_readable_error(error)
 
