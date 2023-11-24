@@ -163,6 +163,35 @@ defmodule Exrdkafka do
     end
   end
 
+  def produce_sync(client_id, topic_name, partition, key, value, headers0, timestamp) do
+    case CacheClient.get(client_id) do
+      {:ok, client_ref, _client_pid} ->
+        headers = to_headers(headers0)
+
+        case ExrdkafkaNif.produce_sync(
+               client_ref,
+               topic_name,
+               partition,
+               key,
+               value,
+               headers,
+               timestamp
+             ) do
+          :ok ->
+            :ok
+
+          error ->
+            error
+        end
+
+      :undefined ->
+        {:error, :err_undefined_client}
+
+      error ->
+        error
+    end
+  end
+
   def get_readable_error(error), do: ErrorConverter.get_readable_error(error)
 
   defp produce_blocking(client_ref, topic_name, partition, key, value, headers, timestamp) do

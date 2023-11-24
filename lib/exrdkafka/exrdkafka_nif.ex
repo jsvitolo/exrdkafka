@@ -22,6 +22,10 @@ defmodule ExrdkafkaNif do
     raise_not_loaded(__ENV__.line)
   end
 
+  def produce_sync(_client_ref, _topic_ref, _partition, _key, _value, _headers, _timestamp) do
+    raise_not_loaded(__ENV__.line)
+  end
+
   def get_metadata(_client_ref), do: raise_not_loaded(__ENV__.line)
 
   def consumer_new(_group_id, _topics, _client_config, _topics_config),

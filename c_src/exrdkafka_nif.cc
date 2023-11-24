@@ -121,6 +121,7 @@ static ErlNifFunc nif_funcs[] =
     {"producer_topic_new", 3, enif_producer_topic_new},
     {"producer_cleanup", 1, enif_producer_cleanup},
     {"produce", 7, enif_produce},
+    {"produce_sync", 7, enif_produce_sync},
     {"get_metadata", 1, enif_get_metadata, ERL_NIF_DIRTY_JOB_IO_BOUND},
 
     {"consumer_new", 4, enif_consumer_new},
