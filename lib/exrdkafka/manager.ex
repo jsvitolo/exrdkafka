@@ -8,6 +8,7 @@ defmodule Exrdkafka.Manager do
   alias Exrdkafka.Utils
   alias Exrdkafka.Producer
   alias Exrdkafka.ClientSupervisor
+  alias Exrdkafka.Config
 
   def start_link([]) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
@@ -120,6 +121,42 @@ defmodule Exrdkafka.Manager do
     end
   end
 
-  defp internal_start_consumer(_, _, _, _, _), do: {:error, :not_implemented}
+  defp internal_start_consumer(client_id, group_id, topics, client_config, default_topics_config) do
+    with :undefined <- CacheClient.get(client_id),
+         :ok <- valid_consumer_topics(topics),
+         {:ok, ek_client_config, rdk_client_config} <- Config.convert_kafka_config(client_config),
+         {:ok, ek_topic_config, rdk_topic_config} <-
+           Config.convert_topic_config(default_topics_config) do
+      args = [
+        client_id,
+        group_id,
+        topics,
+        ek_client_config,
+        rdk_client_config,
+        ek_topic_config,
+        rdk_topic_config
+      ]
+
+      ClientSupervisor.add_client(client_id, Exrdkafka.ConsumerGroup, args)
+    else
+      {:ok, _, _} -> {:error, :err_already_existing_client}
+      error -> error
+    end
+  end
+
+  defp valid_consumer_topics([]), do: :ok
+
+  defp valid_consumer_topics([{k, v} | t]) when is_binary(k) and is_list(v) do
+    mod = Utils.lookup(:callback_module, v)
+
+    if mod != :undefined and is_atom(mod) do
+      valid_consumer_topics(t)
+    else
+      {:error, {:invalid_topic, {k, v}}}
+    end
+  end
+
+  defp valid_consumer_topics([h | _]), do: {:error, {:invalid_topic, h}}
+  # defp internal_start_consumer(_, _, _, _, _), do: {:error, :not_implemented}
   defp internal_stop_client(_), do: {:error, :not_implemented}
 end

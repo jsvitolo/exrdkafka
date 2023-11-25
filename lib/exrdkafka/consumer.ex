@@ -32,10 +32,10 @@ defmodule Exrdkafka.Consumer do
   def init([client_ref, topic_name, partition, offset, queue_ref, topic_settings]) do
     Logger.info("start consumer for: #{topic_name} partition: #{partition} offset: #{offset}")
 
-    cb_module = Map.get(topic_settings, :callback_module)
-    cb_args = Map.get(topic_settings, :callback_args, [])
-    dispatch_mode = Map.get(topic_settings, :dispatch_mode, :one_by_one)
-    poll_idle_ms = Map.get(topic_settings, :poll_idle_ms, @default_poll_idle_ms)
+    cb_module = Keyword.get(topic_settings, :callback_module)
+    cb_args = Keyword.get(topic_settings, :callback_args, [])
+    dispatch_mode = Keyword.get(topic_settings, :dispatch_mode, :one_by_one)
+    poll_idle_ms = Keyword.get(topic_settings, :poll_idle_ms, @default_poll_idle_ms)
 
     case cb_module.init(topic_name, partition, offset, cb_args) do
       {:ok, cb_state} ->
@@ -157,7 +157,10 @@ defmodule Exrdkafka.Consumer do
   defp schedule_message_process(timeout),
     do: Process.send_after(self(), :process_messages, timeout)
 
-  defp commit_offset(client_ref, %{topic: topic, partition: partition, offset: offset}) do
+  defp commit_offset(
+         client_ref,
+         {:exrdkafka_msg, topic, partition, offset, _key, _msg, _headers, _times}
+       ) do
     ExrdkafkaNif.consumer_offset_store(client_ref, topic, partition, offset)
   end
 

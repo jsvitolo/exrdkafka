@@ -60,7 +60,7 @@ defmodule Exrdkafka.Config do
 
   defp is_exrdkafka_config?(_), do: false
 
-  defp to_librdkafka_topic_config(_request_required_acks, v),
+  defp to_librdkafka_topic_config(:request_required_acks, v),
     do: {<<"request.required.acks">>, Utils.to_binary(v)}
 
   defp to_librdkafka_config(:builtin_features, v),
