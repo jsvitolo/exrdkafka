@@ -46,13 +46,14 @@ defmodule Exrdkafka do
   end
 
   def create_consumer_group(client_id, group_id, topics, client_config0, default_topics_config) do
-    # global_client_opts = Utils.get_env(:global_client_options, [])
-    # client_config = Utils.append_props(client_config0, global_client_opts)
+    global_client_opts = Utils.get_env(:global_client_options, [])
+    client_config = Utils.append_props(client_config0, global_client_opts)
+
     Manager.start_consumer_group(
       client_id,
       group_id,
       topics,
-      client_config0,
+      client_config,
       default_topics_config
     )
   end

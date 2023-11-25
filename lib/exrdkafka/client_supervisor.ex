@@ -1,6 +1,6 @@
 defmodule Exrdkafka.ClientSupervisor do
   @moduledoc """
-  Documentation for `Exrdkafka.Sup`.
+  Documentation for `Exrdkafka.ClientSupervisor`.
   """
 
   use Supervisor

@@ -63,6 +63,9 @@ defmodule Exrdkafka.Config do
   defp to_librdkafka_topic_config(:request_required_acks, v),
     do: {<<"request.required.acks">>, Utils.to_binary(v)}
 
+  defp to_librdkafka_topic_config(:auto_offset_reset, v),
+    do: {<<"auto.offset.reset">>, Utils.to_binary(v)}
+
   defp to_librdkafka_config(:builtin_features, v),
     do: {<<"builtin_features">>, Utils.to_binary(v)}
 
@@ -81,6 +84,9 @@ defmodule Exrdkafka.Config do
 
   defp to_librdkafka_config(:message_max_bytes, v),
     do: {<<"message.max.bytes">>, Utils.to_binary(v)}
+
+  defp to_librdkafka_config(:statistics_interval_ms, v),
+    do: {<<"statistics.interval.ms">>, Utils.to_binary(v)}
 
   defp to_librdkafka_config(:socket_keepalive_enable, v),
     do: {<<"socket.keepalive.enable">>, Utils.to_binary(v)}
