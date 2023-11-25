@@ -85,11 +85,26 @@ defmodule Exrdkafka.Config do
   defp to_librdkafka_config(:message_max_bytes, v),
     do: {<<"message.max.bytes">>, Utils.to_binary(v)}
 
+  defp to_librdkafka_config(:message_copy_max_bytes, v),
+    do: {<<"message.copy.max.bytes">>, Utils.to_binary(v)}
+
+  defp to_librdkafka_config(:receive_message_max_bytes, v),
+    do: {<<"receive.message.max.bytes">>, Utils.to_binary(v)}
+
+  defp to_librdkafka_config(:max_in_flight, v),
+    do: {<<"max.in.flight">>, Utils.to_binary(v)}
+
+  defp to_librdkafka_config(:metadata_request_timeout_ms, v),
+    do: {<<"metadata.request.timeout.ms">>, Utils.to_binary(v)}
+
   defp to_librdkafka_config(:statistics_interval_ms, v),
     do: {<<"statistics.interval.ms">>, Utils.to_binary(v)}
 
   defp to_librdkafka_config(:socket_keepalive_enable, v),
     do: {<<"socket.keepalive.enable">>, Utils.to_binary(v)}
+
+  defp to_librdkafka_config(:topic_metadata_refresh_interval_ms, v),
+    do: {<<"topic.metadata.refresh.interval.ms">>, Utils.to_binary(v)}
 
   defp to_librdkafka_config(k, v), do: throw({:error, {:options, {k, v}}})
 
