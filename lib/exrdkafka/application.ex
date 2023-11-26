@@ -14,8 +14,6 @@ defmodule Exrdkafka.Application do
     children = [
       {Exrdkafka.ClientSupervisor, []},
       {Exrdkafka.Clients, []}
-      # Starts a worker by calling: Exrdkafka.Worker.start_link(arg)
-      # {Exrdkafka.Worker, arg}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
