@@ -8,7 +8,7 @@ defmodule Exrdkafka do
   alias Exrdkafka.CacheClient
   alias Exrdkafka.Config
   alias Exrdkafka.ErrorConverter
-  alias Exrdkafka.Manager
+  alias Exrdkafka.ClientManager
   alias Exrdkafka.Producer
   alias Exrdkafka.Utils
 
@@ -38,7 +38,7 @@ defmodule Exrdkafka do
 
     case Config.convert_kafka_config(config) do
       {:ok, exrdkafka_config, librdkafka_config} ->
-        Manager.start_producer(client_id, exrdkafka_config, librdkafka_config)
+        ClientManager.start_producer(client_id, exrdkafka_config, librdkafka_config)
 
       error ->
         error
@@ -49,7 +49,7 @@ defmodule Exrdkafka do
     global_client_opts = Utils.get_env(:global_client_options, [])
     client_config = Utils.append_props(client_config0, global_client_opts)
 
-    Manager.start_consumer_group(
+    ClientManager.start_consumer_group(
       client_id,
       group_id,
       topics,
@@ -58,7 +58,7 @@ defmodule Exrdkafka do
     )
   end
 
-  def stop_client(client_id), do: Manager.stop_client(client_id)
+  def stop_client(client_id), do: ClientManager.stop_client(client_id)
 
   def get_stats(client_id) do
     case CacheClient.get(client_id) do
@@ -74,7 +74,7 @@ defmodule Exrdkafka do
       {:ok, client_ref, _client_pid} ->
         case Config.convert_topic_config(topic_config) do
           {:ok, _erlkaf_config, librdkafka_config} ->
-            Manager.create_topic(client_ref, topic_name, librdkafka_config)
+            ClientManager.create_topic(client_ref, topic_name, librdkafka_config)
 
           error ->
             error
