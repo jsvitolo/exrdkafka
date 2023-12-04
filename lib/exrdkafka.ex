@@ -13,16 +13,20 @@ defmodule Exrdkafka do
   alias Exrdkafka.Utils
 
   @type client_id :: atom()
+  @type type :: atom()
   @type client_option :: any()
   @type topic_option :: any()
+  @type client_config :: Keyword.t()
   @type topic :: any()
   @type key :: any()
   @type value :: any()
   @type headers :: any()
   @type partition :: any()
 
+  @spec start() :: :ok | {:error, any()}
   def start(), do: start(:temporary)
 
+  @spec start(type()) :: :ok | {:error, any()}
   def start(type) do
     case Application.ensure_all_started(:exrdkafka, type) do
       {:ok, _} -> :ok
@@ -30,8 +34,23 @@ defmodule Exrdkafka do
     end
   end
 
+  @spec stop() :: :ok | {:error, any()}
   def stop(), do: Application.stop(:exrdkafka)
 
+  @doc """
+  Creates a producer.
+
+  ## Parameters
+
+  - `client_id`: The client ID.
+  - `client_config`: The client configuration.
+
+  ## Examples
+
+      iex> Exrdkafka.create_producer(:my_client, bootstrap_servers: "localhost:9092")
+      :ok
+  """
+  @spec create_producer(client_id(), client_config()) :: :ok | {:error, any()}
   def create_producer(client_id, client_config) do
     global_client_opts = Utils.get_env(:global_client_options, [])
     config = Utils.append_props(client_config, global_client_opts)
@@ -45,9 +64,9 @@ defmodule Exrdkafka do
     end
   end
 
-  def create_consumer_group(client_id, group_id, topics, client_config0, default_topics_config) do
+  def create_consumer_group(client_id, group_id, topics, base_client_config, default_topics_config) do
     global_client_opts = Utils.get_env(:global_client_options, [])
-    client_config = Utils.append_props(client_config0, global_client_opts)
+    client_config = Utils.append_props(base_client_config, global_client_opts)
 
     ClientManager.start_consumer_group(
       client_id,
