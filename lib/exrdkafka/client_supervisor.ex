@@ -5,7 +5,7 @@ defmodule Exrdkafka.ClientSupervisor do
 
   use Supervisor
 
-  alias Exrdkafka.Manager
+  alias Exrdkafka.ClientManager
 
   def start_link(init_arg) do
     Supervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
@@ -13,7 +13,7 @@ defmodule Exrdkafka.ClientSupervisor do
 
   def init(_init_arg) do
     children = [
-      {Manager, []}
+      {ClientManager, []}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

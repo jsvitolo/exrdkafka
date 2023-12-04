@@ -1,23 +1,41 @@
-defmodule Exrdkafka.Manager do
+defmodule Exrdkafka.ClientManager do
   @moduledoc """
-  Documentation for `Exrdkafka.Manager`.
+  The `ClientManager` module provides a high-level API for managing Kafka
+  clients in an Elixir application.
+
+  This module encapsulates the logic for creating topics, starting and stopping
+  producers and consumers, and other Kafka-related operations. It maintains an
+  internal state that evolves over time based on these operations.
+
+  Key functions include `create_topic`, `start_producer`, `start_consumer_group`,
+  and `stop_client`, which are invoked through synchronous `GenServer` calls.
+
+  While the module is equipped to handle asynchronous messages via `handle_cast`,
+  the current implementation treats such messages as unexpected.
+
+  Under the hood, `ClientManager` leverages the power of NIFs to interact
+  with the `librdkafka` C library. This ensures efficient communication with
+  Kafka while providing a friendly Elixir API.
   """
+
   use GenServer
 
   alias Exrdkafka.CacheClient
-  alias Exrdkafka.Utils
-  alias Exrdkafka.Producer
   alias Exrdkafka.ClientSupervisor
   alias Exrdkafka.Config
+  alias Exrdkafka.Producer
+  alias Exrdkafka.Utils
 
-  def start_link([]) do
+  def start_link(_opts) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
+  @spec start_producer(atom(), map(), map()) :: :ok | {:error, any()}
   def start_producer(client_id, exrdkafka_config, librdkafka_config) do
     GenServer.call(__MODULE__, {:start_producer, client_id, exrdkafka_config, librdkafka_config})
   end
 
+  @spec start_consumer_group(atom(), binary(), list(), map(), map()) :: :ok | {:error, any()}
   def start_consumer_group(client_id, group_id, topics, client_config, default_topics_config) do
     GenServer.call(
       __MODULE__,
@@ -25,10 +43,12 @@ defmodule Exrdkafka.Manager do
     )
   end
 
+  @spec stop_client(atom()) :: :ok | {:error, any()}
   def stop_client(client_id) do
     GenServer.call(__MODULE__, {:stop_client, client_id})
   end
 
+  @spec create_topic(atom(), binary(), map()) :: :ok | {:error, any()}
   def create_topic(client_ref, topic_name, topic_config) do
     GenServer.call(__MODULE__, {:create_topic, client_ref, topic_name, topic_config})
   end
@@ -96,28 +116,28 @@ defmodule Exrdkafka.Manager do
     {:ok, state}
   end
 
-  # Implement the following functions according to your needs
   defp internal_start_producer(client_id, exrdkafka_config, librdkafka_config) do
     case CacheClient.get(client_id) do
-      :undefined ->
-        delivery_report_callback = Utils.lookup(:delivery_report_callback, exrdkafka_config)
-        has_dr_callback = delivery_report_callback != :undefined
+      :undefined -> start_new_producer(client_id, exrdkafka_config, librdkafka_config)
+      {:ok, _, _} -> {:error, :err_already_existing_client}
+    end
+  end
 
-        case ExrdkafkaNif.producer_new(has_dr_callback, librdkafka_config) do
-          {:ok, producer_ref} ->
-            ClientSupervisor.add_client(client_id, Producer, [
-              client_id,
-              delivery_report_callback,
-              exrdkafka_config,
-              producer_ref
-            ])
+  defp start_new_producer(client_id, exrdkafka_config, librdkafka_config) do
+    delivery_report_callback = Utils.lookup(:delivery_report_callback, exrdkafka_config)
+    has_dr_callback = delivery_report_callback != :undefined
 
-          error ->
-            error
-        end
+    case ExrdkafkaNif.producer_new(has_dr_callback, librdkafka_config) do
+      {:ok, producer_ref} ->
+        ClientSupervisor.add_client(client_id, Producer, [
+          client_id,
+          delivery_report_callback,
+          exrdkafka_config,
+          producer_ref
+        ])
 
-      {:ok, _, _} ->
-        {:error, :err_already_existing_client}
+      error ->
+        error
     end
   end
 
