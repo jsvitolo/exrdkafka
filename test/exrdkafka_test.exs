@@ -2,7 +2,7 @@ defmodule ExrdkafkaTest do
   use ExUnit.Case
   doctest Exrdkafka
 
-  defmodule Test.Producer do
+  defmodule Producer do
     @behaviour Exrdkafka.ProducerCallbacks
 
     def handle_delivery_report(_producer, _message, _opaque) do
@@ -37,7 +37,7 @@ defmodule ExrdkafkaTest do
     Application.put_env(:exrdkafka, :global_client_options,
       bootstrap_servers: "localhost:9092",
       delivery_report_only_error: false,
-      delivery_report_callback: Test.Producer,
+      delivery_report_callback: ExrdkafkaTest.Producer,
       debug: :topic
     )
 
