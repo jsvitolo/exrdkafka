@@ -20,8 +20,14 @@ defmodule Exrdkafka.Clients do
 
   defp start_clients do
     case Utils.get_env(:clients) do
-      :undefined -> :ok
-      clients -> Enum.each(clients, &start_client/1)
+      :undefined ->
+        :ok
+
+      nil ->
+        :ok
+
+      clients ->
+        Enum.each(clients, &start_client/1)
     end
   end
 
