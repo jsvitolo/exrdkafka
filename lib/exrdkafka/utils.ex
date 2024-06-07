@@ -39,7 +39,7 @@ defmodule Exrdkafka.Utils do
     end
   end
 
-  def append_props(l1, []), do: l1
+  def append_props(client_config, nil), do: client_config
 
   def to_binary(v) when is_binary(v), do: v
   def to_binary(v) when is_list(v), do: List.to_string(v)
