@@ -160,7 +160,7 @@ defmodule Exrdkafka do
                 :ok
 
               :drop_records ->
-                Logger.warn("message: ~p dropped", [{topic_name, partition, key, value, headers}])
+                Logger.warning("message: ~p dropped", [{topic_name, partition, key, value, headers}])
                 :ok
 
               :block_calling_process ->

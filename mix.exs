@@ -8,7 +8,8 @@ defmodule Exrdkafka.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      artifacts: ["priv/exrdkafka_nif.so"]
     ]
   end
 
