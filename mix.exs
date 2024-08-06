@@ -11,7 +11,7 @@ defmodule Exrdkafka.MixProject do
       aliases: aliases(),
       deps: deps(),
       make_targets: ["all"],
-      make_clean: ["clean_nif"],
+      make_clean: ["clean"],
       erlc_options: erlc_options()
     ]
   end

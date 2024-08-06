@@ -1,7 +1,6 @@
 # Variables
 CPUS := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
 PREFIX = $(MIX_COMPILE_PATH)/../priv
-BUILD  = $(MIX_COMPILE_PATH)/../obj
 
 # Erlang-specific settings
 ERL_CFLAGS ?= -I$(ERL_EI_INCLUDE_DIR)
@@ -26,7 +25,7 @@ C_SRC_ENV ?= $(C_SRC_DIR)/env.mk
 # Targets
 .PHONY: all get_deps compile_nif clean_nif cpplint cppcheck
 
-all: compile_nif
+all: $(NIF)
 
 get_deps:
 	@./build_deps.sh
@@ -34,21 +33,23 @@ get_deps:
 compile_nif: get_deps
 	@make V=0 -C c_src -j $(CPUS)
 
-$(BUILD)/%.o: c_src/%.c
+c_src/%.o: c_src/%.c | $(PREFIX)
 	@echo " CC $(notdir $@)"
 	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -o $@ $<
 
-$(NIF): $(BUILD)/exrdkafka_nif.o
+$(NIF): c_src/exrdkafka_nif.o c_src/exrdkafka_producer.o | $(PREFIX)
 	@echo " LD $(notdir $@)"
-	$(CC) $< $(ERL_LDFLAGS) $(LDFLAGS) -o $@
+	$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
 
-$(PREFIX) $(BUILD):
+$(PREFIX):
 	mkdir -p $@
+
+clean: clean_nif
 
 clean_nif:
 	@make -C c_src clean
 	$(RM) $(NIF)
-	$(RM) $(BUILD)/*.o
+	$(RM) c_src/*.o
 
 cpplint:
 	cpplint --counting=detailed \
