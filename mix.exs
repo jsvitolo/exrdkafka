@@ -10,7 +10,7 @@ defmodule Exrdkafka.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
-      make_targets: ["compile_nif"],
+      make_targets: ["all"],
       make_clean: ["clean_nif"],
       erlc_options: erlc_options()
     ]
