@@ -6,10 +6,12 @@ defmodule Exrdkafka.MixProject do
       app: :exrdkafka,
       version: "0.1.0",
       elixir: "~> 1.14",
+      compilers: Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
-      artifacts: ["priv/exrdkafka_nif.so"]
+      artifacts: ["priv/exrdkafka_nif.so"],
+      erlc_options: erlc_options()
     ]
   end
 
@@ -31,14 +33,27 @@ defmodule Exrdkafka.MixProject do
 
   defp aliases do
     [
-      # Define a new alias "compile.c_src" to compile the NIF
-      "compile.c_src": ["cmd make compile_nif"],
-      # Adds "compile.c_src" to the "compile" alias
-      compile: ["compile --warnings-as-errors", "compile.c_src"],
-      # Define an alias "clean.c_src" to clean the NIF
-      "clean.c_src": ["cmd make clean_nif"],
-      # Adds "clean.c_src" to the "clean" alias
-      clean: ["clean", "clean.c_src"]
+      compile: ["compile", &compile_nif/1],
+      clean: ["clean", &clean_nif/1]
     ]
+  end
+
+  defp erlc_options do
+    [
+      warnings_as_errors: true,
+      warn_export_all: true
+    ]
+  end
+
+  defp compile_nif(_) do
+    if match?({:unix, _}, :os.type()) do
+      {_result, _} = System.cmd("make", ["compile_nif"], stderr_to_stdout: true)
+    end
+  end
+
+  defp clean_nif(_) do
+    if match?({:unix, _}, :os.type()) do
+      {_result, _} = System.cmd("make", ["clean_nif"], stderr_to_stdout: true)
+    end
   end
 end
