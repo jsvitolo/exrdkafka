@@ -6,11 +6,12 @@ defmodule Exrdkafka.MixProject do
       app: :exrdkafka,
       version: "0.1.0",
       elixir: "~> 1.14",
-      compilers: Mix.compilers(),
+      compilers: [:elixir_make | Mix.compilers()],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
-      artifacts: ["priv/exrdkafka_nif.so"],
+      make_targets: ["compile_nif"],
+      make_clean: ["clean_nif"],
       erlc_options: erlc_options()
     ]
   end
@@ -27,7 +28,8 @@ defmodule Exrdkafka.MixProject do
   defp deps do
     [
       {:esq, "~> 2.0"},
-      {:jason, "~> 1.4"}
+      {:jason, "~> 1.4"},
+      {:elixir_make, "~> 0.8.4", runtime: false}
     ]
   end
 
