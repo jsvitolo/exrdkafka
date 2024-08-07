@@ -1,3 +1,4 @@
+MIX_APP_PATH ?= ..
 PRIV_DIR = $(MIX_APP_PATH)/priv
 NIF_SO = $(PRIV_DIR)/exrdkafka_nif.so
 DEPS_DIR = $(CURDIR)/_build/deps
