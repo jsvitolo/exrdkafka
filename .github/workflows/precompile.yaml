@@ -1,4 +1,4 @@
-name: Precompile and Release
+name: precompile
 
 on:
   push:
@@ -6,77 +6,90 @@ on:
       - 'v*'
 
 jobs:
-  release:
-    name: Build and Release
-    runs-on: ${{ matrix.os }}
+  linux:
+    runs-on: ubuntu-latest
+    env:
+      MIX_ENV: "prod"
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
         include:
-          - os: ubuntu-latest
-            otp: 25.0
-            elixir: 1.14
-          - os: macos-latest
-            otp: 25.0
-            elixir: 1.14
-
+          - elixir: 1.14.x
+            otp: 25.x
+          - elixir: 1.14.x
+            otp: 26.x
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make curl tar librdkafka-dev
+      - run: |
+          mix deps.get
+          MIX_ENV=test mix test
+      - name: Pre-compile NIF library
+        run: |
+          export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
+          mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
+          mix elixir_make.precompile
+      - uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            cache/*.tar.gz
 
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        otp-version: ${{ matrix.otp }}
-        elixir-version: ${{ matrix.elixir }}
+  macos:
+    runs-on: macos-11
+    env:
+      MIX_ENV: "prod"
+    strategy:
+      matrix:
+        include:
+          - elixir: '1.14.5'
+            otp: '25.1'
+          - elixir: '1.14.5'
+            otp: '26.0'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
+      - name: Install Dependencies
+        run: |
+          brew install librdkafka
+      - run: |
+          mix deps.get
+          MIX_ENV=test mix test
+      - name: Pre-compile NIF library
+        run: |
+          export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
+          mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
+          mix elixir_make.precompile
+      - uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            cache/*.tar.gz
 
-    - name: Restore dependencies cache
-      uses: actions/cache@v3
-      with:
-        path: deps
-        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-        restore-keys: ${{ runner.os }}-mix-
-
-    - name: Install dependencies
-      run: mix deps.get
-
-    - name: Compile
-      run: MIX_ENV=prod mix compile
-
-    - name: Run tests
-      run: mix test
-
-    - name: Precompile
-      run: |
-        mkdir -p priv
-        MIX_ENV=prod mix elixir_make.precompile
-
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./_build/prod/lib/seu_projeto/priv/seu_projeto.so
-        asset_name: seu_projeto-${{ runner.os }}.so
-        asset_content_type: application/octet-stream
-
-    - name: Generate Checksum
-      run: |
-        MIX_ENV=prod mix elixir_make.checksum --all --ignore-unavailable
-        
-    - name: Commit Checksum
-      uses: stefanzweifel/git-auto-commit-action@v4
-      with:
-        commit_message: "Update checksum for ${{ github.ref }}"
-        file_pattern: checksum-*.exs
+  generate-checksum:
+    needs: [linux, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: 26.x
+          elixir-version: 1.14.x
+      - name: Generate Checksum
+        run: |
+          mix deps.get
+          MIX_ENV=prod mix elixir_make.checksum --all --ignore-unavailable
+      - name: Commit Checksum
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Update checksum for ${{ github.ref }}"
+          file_pattern: checksum-*.exs
