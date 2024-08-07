@@ -1,62 +1,55 @@
-PUS := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
-BASEDIR := $(shell pwd)
-MIX_APP_PATH ?= $(BASEDIR)/_build/dev/lib/exrdkafka
-PRIV_DIR := $(MIX_APP_PATH)/priv
-NIF_SO := $(PRIV_DIR)/exrdkafka_nif.so
-C_SRC_DIR := $(BASEDIR)/c_src
-C_SRC_NIF := $(C_SRC_DIR)/exrdkafka_nif.so
-C_SRC_ENV ?= $(C_SRC_DIR)/env.mk
+PRIV_DIR = $(MIX_APP_PATH)/priv
+NIF_SO = $(PRIV_DIR)/exrdkafka_nif.so
+DEPS_DIR = $(CURDIR)/_build/deps
 
-.PHONY: all get_deps compile_nif clean_nif generate_env copy_nif
+CFLAGS = -fPIC -I$(ERTS_INCLUDE_DIR) -I$(ERL_INTERFACE_INCLUDE_DIR)
+CXXFLAGS = -fPIC -I$(ERTS_INCLUDE_DIR) -I$(ERL_INTERFACE_INCLUDE_DIR)
+LDFLAGS = -L$(ERL_INTERFACE_LIB_DIR) -shared -lei
 
-all: compile_nif copy_nif
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    OPENSSL_DIR = $(shell brew --prefix openssl)
+    LZ4_DIR = $(shell brew --prefix lz4)
+    ZSTD_DIR = $(shell brew --prefix zstd)
+    CURL_DIR = $(shell brew --prefix curl)
+    CXXFLAGS += -I$(OPENSSL_DIR)/include -I$(LZ4_DIR)/include -I$(ZSTD_DIR)/include -I$(CURL_DIR)/include
+    LDFLAGS += -L$(OPENSSL_DIR)/lib -L$(LZ4_DIR)/lib -L$(ZSTD_DIR)/lib -L$(CURL_DIR)/lib
+endif
 
-get_deps:
+CXXFLAGS += -std=c++11 -O3 -Wall -Wextra -Wno-missing-field-initializers \
+            -DNDEBUG \
+            -I$(DEPS_DIR)/librdkafka/src \
+            -I$(DEPS_DIR)
+
+LDFLAGS += -L$(DEPS_DIR)/librdkafka/src \
+           -lrdkafka \
+           -lsasl2 \
+           -lz \
+           -lssl \
+           -lcrypto \
+           -lstdc++ \
+           -llz4 \
+           -lzstd \
+           -lcurl
+
+SOURCES = $(wildcard c_src/*.cpp)
+OBJECTS = $(SOURCES:.cpp=.o)
+
+.PHONY: all clean deps
+
+all: deps $(NIF_SO)
+
+deps:
+	@echo "Building dependencies..."
 	@./build_deps.sh
 
-compile_nif: get_deps generate_env
+$(NIF_SO): $(OBJECTS)
 	@mkdir -p $(PRIV_DIR)
-	@$(MAKE) -C $(C_SRC_DIR) -j $(CPUS)
+	$(CXX) $(OBJECTS) $(LDFLAGS) -o $@
 
-copy_nif: compile_nif
-	@mkdir -p $(PRIV_DIR)
-	@cp $(C_SRC_NIF) $(NIF_SO)
-	@echo "NIF copied to $(NIF_SO)"
+%.o: %.cpp
+	$(CXX) -c $(CXXFLAGS) $< -o $@
 
-clean_nif:
-	@$(MAKE) -C $(C_SRC_DIR) clean
-	@rm -f $(NIF_SO)
-	@echo "Cleaned NIF files"
-
-generate_env:
-	@erl -noshell -s init stop -eval " \
-		file:write_file(\"$(C_SRC_ENV)\", \
-		io_lib:format( \
-			\"ERTS_INCLUDE_DIR ?= ~s/erts-~s/include/~n\" \
-			\"ERL_INTERFACE_INCLUDE_DIR ?= ~s~n\" \
-			\"ERL_INTERFACE_LIB_DIR ?= ~s~n\", \
-			[code:root_dir(), erlang:system_info(version), \
-			code:lib_dir(erl_interface, include), \
-			code:lib_dir(erl_interface, lib)])), \
-		halt()."
-
--include $(C_SRC_ENV)
-
-cpplint:
-	cpplint --counting=detailed \
-	        --filter=-legal/copyright,-build/include_subdir,-build/include_order,-whitespace/blank_line,-whitespace/braces,-whitespace/indent,-whitespace/parens,-whitespace/newline \
-            --linelength=300 \
-			--exclude=c_src/*.o --exclude=c_src/*.mk  \
-			c_src/*.*
-
-cppcheck:
-	cppcheck -j $(CPUS) \
-             -I /usr/local/opt/openssl/include \
-             -I deps/librdkafka/src \
-             -I $(ERTS_INCLUDE_DIR) \
-             -I $(ERL_INTERFACE_INCLUDE_DIR) \
-             --force \
-             --enable=all \
-	 		 --xml-version=2 \
-	 		 --output-file=cppcheck_results.xml \
-	 		 c_src/
+clean:
+	@rm -rf $(PRIV_DIR) $(OBJECTS)
+	@rm -rf $(DEPS_DIR)
