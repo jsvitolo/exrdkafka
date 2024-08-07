@@ -8,10 +8,10 @@ defmodule Exrdkafka.MixProject do
       elixir: "~> 1.14",
       compilers: [:elixir_make | Mix.compilers()],
       start_permanent: Mix.env() == :prod,
-      aliases: aliases(),
+      # aliases: aliases(),
       deps: deps(),
-      make_targets: ["all"],
-      make_clean: ["clean"],
+      make_targets: ["compile_nif"],
+      make_clean: ["clean_nif"],
     ]
   end
 
@@ -32,12 +32,12 @@ defmodule Exrdkafka.MixProject do
     ]
   end
 
-  defp aliases do
-    [
-      compile: ["compile", &compile_nif/1],
-      clean: ["clean", &clean_nif/1]
-    ]
-  end
+  # defp aliases do
+  #   [
+  #     compile: ["compile", &compile_nif/1],
+  #     clean: ["clean", &clean_nif/1]
+  #   ]
+  # end
 
   # defp erlc_options do
   #   [
@@ -46,15 +46,15 @@ defmodule Exrdkafka.MixProject do
   #   ]
   # end
 
-  defp compile_nif(_) do
-    if match?({:unix, _}, :os.type()) do
-      {_result, _} = System.cmd("make", ["compile_nif"], stderr_to_stdout: true)
-    end
-  end
+  # defp compile_nif(_) do
+  #   if match?({:unix, _}, :os.type()) do
+  #     {_result, _} = System.cmd("make", ["compile_nif"], stderr_to_stdout: true)
+  #   end
+  # end
 
-  defp clean_nif(_) do
-    if match?({:unix, _}, :os.type()) do
-      {_result, _} = System.cmd("make", ["clean_nif"], stderr_to_stdout: true)
-    end
-  end
+  # defp clean_nif(_) do
+  #   if match?({:unix, _}, :os.type()) do
+  #     {_result, _} = System.cmd("make", ["clean_nif"], stderr_to_stdout: true)
+  #   end
+  # end
 end
