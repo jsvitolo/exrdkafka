@@ -79,7 +79,7 @@ defmodule Exrdkafka.MixProject do
         "mix.exs",
         "README.md",
         "LICENSE",
-        "checksum-*.exs",
+        "checksum.exs",
         "VERSION"
       ],
       description: "Elixir Kafka client NIF for librdkafka",

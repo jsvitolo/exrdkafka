@@ -26,3 +26,5 @@ exrdkafka-*.tar
 /tmp/
 
 /priv/exrdkafka_nif.so
+checksum.exs
+.cursorignore
