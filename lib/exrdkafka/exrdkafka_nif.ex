@@ -1,53 +1,51 @@
 defmodule ExrdkafkaNif do
-  @on_load :load_nif
+  @on_load :__on_load__
 
-  def load_nif do
-    path = :filename.join(:code.priv_dir(:exrdkafka), "exrdkafka_nif")
-
+  def __on_load__ do
+    # We refer to `:code.priv_dir` indirectly because at runtime, the `priv` dir
+    # is not necessarily in the same path as `./priv` -- as an exercise,
+    # try running it via `iex -S mix` and check the returned path!
+    path = :filename.join(:code.priv_dir(:exrdkafka), ~c"exrdkafka_nif")
     :erlang.load_nif(path, 0)
   end
 
-  def set_log_process(_pid), do: raise_not_loaded(__ENV__.line)
+  def set_log_process(_pid), do: :erlang.nif_error(:undef)
 
-  def producer_new(_has_dr_callback, _config), do: raise_not_loaded(__ENV__.line)
+  def producer_new(_has_dr_callback, _config), do: :erlang.nif_error(:undef)
 
-  def producer_cleanup(_client_ref), do: raise_not_loaded(__ENV__.line)
+  def producer_cleanup(_client_ref), do: :erlang.nif_error(:undef)
 
-  def producer_set_owner(_client_ref, _pid), do: raise_not_loaded(__ENV__.line)
+  def producer_set_owner(_client_ref, _pid), do: :erlang.nif_error(:undef)
 
   def producer_topic_new(_client_ref, _topic_name, _topic_config),
-    do: raise_not_loaded(__ENV__.line)
+    do: :erlang.nif_error(:undef)
 
   def produce(_client_ref, _topic_ref, _partition, _key, _value, _headers, _timestamp) do
-    raise_not_loaded(__ENV__.line)
+    :erlang.nif_error(:undef)
   end
 
   def produce_sync(_client_ref, _topic_ref, _partition, _key, _value, _headers, _timestamp) do
-    raise_not_loaded(__ENV__.line)
+    :erlang.nif_error(:undef)
   end
 
   def produce_batch(_client_ref, _topic_ref, _messages) do
-    raise_not_loaded(__ENV__.line)
+    :erlang.nif_error(:undef)
   end
 
-  def get_metadata(_client_ref), do: raise_not_loaded(__ENV__.line)
-  def get_partitions_count(_client_ref, _topic_name), do: raise_not_loaded(__ENV__.line)
+  def get_metadata(_client_ref), do: :erlang.nif_error(:undef)
+  def get_partitions_count(_client_ref, _topic_name), do: :erlang.nif_error(:undef)
 
   def consumer_new(_group_id, _topics, _client_config, _topics_config),
-    do: raise_not_loaded(__ENV__.line)
+    do: :erlang.nif_error(:undef)
 
-  def consumer_partition_revoke_completed(_client_ref), do: raise_not_loaded(__ENV__.line)
+  def consumer_partition_revoke_completed(_client_ref), do: :erlang.nif_error(:undef)
 
-  def consumer_queue_poll(_queue, _batch_size), do: raise_not_loaded(__ENV__.line)
+  def consumer_queue_poll(_queue, _batch_size), do: :erlang.nif_error(:undef)
 
-  def consumer_queue_cleanup(_queue), do: raise_not_loaded(__ENV__.line)
+  def consumer_queue_cleanup(_queue), do: :erlang.nif_error(:undef)
 
   def consumer_offset_store(_client_ref, _topic_name, _partition, _offset),
-    do: raise_not_loaded(__ENV__.line)
+    do: :erlang.nif_error(:undef)
 
-  def consumer_cleanup(_client_ref), do: raise_not_loaded(__ENV__.line)
-
-  defp raise_not_loaded(line) do
-    raise "NIF not loaded: #{__MODULE__}, line: #{line}"
-  end
+  def consumer_cleanup(_client_ref), do: :erlang.nif_error(:undef)
 end
