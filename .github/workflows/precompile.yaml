@@ -1,93 +1,113 @@
-name: precompile
+name: Precompile
 
 on:
   push:
     tags:
       - 'v*'
 
+env:
+  MIX_ENV: "prod"
+  ELIXIR_MAKE_CACHE_DIR: ${{ github.workspace }}/cache
+
 jobs:
-  linux:
-    runs-on: ubuntu-latest
-    env:
-      MIX_ENV: "prod"
+  precompile:
+    name: Precompile on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - elixir: 1.14.x
+          - os: ubuntu-latest
+            elixir: 1.14.x
             otp: 25.x
-          - elixir: 1.14.x
+          - os: ubuntu-latest
+            elixir: 1.14.x
             otp: 26.x
+          - os: macos-11
+            elixir: '1.14.5'
+            otp: '25.1'
+          - os: macos-11
+            elixir: '1.14.5'
+            otp: '26.0'
+
     steps:
       - uses: actions/checkout@v3
-      - uses: erlef/setup-beam@v1
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
-      - name: Install Dependencies
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
+
+      - name: Restore dependencies cache
+        uses: actions/cache@v3
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc make curl tar librdkafka-dev
-      - run: |
-          mix deps.get
-          MIX_ENV=test mix test
+          sudo apt-get install -y gcc make curl tar librdkafka-dev libsasl2-dev liblz4-dev libzstd-dev libcurl4-openssl-dev zlib1g-dev libssl-dev libcrypto++-dev
+
+      - name: Install system dependencies
+        if: runner.os == 'macOS'
+        run: brew install librdkafka
+
+      - name: Get dependencies
+        run: mix deps.get
+
+      - name: Run tests
+        run: mix test
+
       - name: Pre-compile NIF library
         run: |
-          export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
           mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
           mix elixir_make.precompile
-      - uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            cache/*.tar.gz
 
-  macos:
-    runs-on: macos-11
-    env:
-      MIX_ENV: "prod"
-    strategy:
-      matrix:
-        include:
-          - elixir: '1.14.5'
-            otp: '25.1'
-          - elixir: '1.14.5'
-            otp: '26.0'
-    steps:
-      - uses: actions/checkout@v3
-      - uses: erlef/setup-beam@v1
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
         with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
-      - name: Install Dependencies
-        run: |
-          brew install librdkafka
-      - run: |
-          mix deps.get
-          MIX_ENV=test mix test
-      - name: Pre-compile NIF library
-        run: |
-          export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
-          mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
-          mix elixir_make.precompile
-      - uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            cache/*.tar.gz
+          name: precompiled-nifs-${{ matrix.os }}
+          path: ${{ env.ELIXIR_MAKE_CACHE_DIR }}/*.tar.gz
 
-  generate-checksum:
-    needs: [linux, macos]
+  release:
+    needs: precompile
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: erlef/setup-beam@v1
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
         with:
           otp-version: 26.x
           elixir-version: 1.14.x
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Move artifacts to cache directory
+        run: |
+          mkdir -p cache
+          find artifacts -name '*.tar.gz' -exec mv {} cache/ \;
+
       - name: Generate Checksum
         run: |
           mix deps.get
           MIX_ENV=prod mix elixir_make.checksum --all --ignore-unavailable
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            cache/*.tar.gz
+            checksum-*.exs
+
       - name: Commit Checksum
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
