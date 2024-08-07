@@ -545,7 +545,7 @@ ERL_NIF_TERM enif_produce_sync(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
     }
 
     // Flush messages to broker
-    rd_kafka_resp_err_t flush_result = rd_kafka_flush(producer->kf, 1000); // 1000 is the timeout in milliseconds
+    rd_kafka_resp_err_t flush_result = rd_kafka_flush(producer->kf, 1); // 1000 is the timeout in milliseconds
 
     if(flush_result != RD_KAFKA_RESP_ERR_NO_ERROR)
         return make_error(env, enif_make_int(env, flush_result));
