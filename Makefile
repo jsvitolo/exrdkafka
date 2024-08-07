@@ -6,6 +6,8 @@ get_deps:
 compile_nif: get_deps
 	@make V=0 -C c_src -j $(CPUS)
 
+all: $(C_SRC_OUTPUT)
+
 clean_nif:
 	@make -C c_src clean
 
