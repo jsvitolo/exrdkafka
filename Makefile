@@ -1,10 +1,10 @@
 # Variables
 CPUS := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
-PREFIX = $(MIX_COMPILE_PATH)/../priv
+PREFIX = $(MIX_APP_PATH)/priv
 
 # Erlang-specific settings
-ERL_CFLAGS ?= -I$(ERL_EI_INCLUDE_DIR)
-ERL_LDFLAGS ?= -L$(ERL_EI_LIBDIR)
+ERL_CFLAGS ?= -I$(ERTS_INCLUDE_DIR)
+ERL_LDFLAGS ?= -L$(ERL_INTERFACE_LIB_DIR)
 
 LDFLAGS += -shared
 CFLAGS += -fPIC
@@ -25,7 +25,7 @@ C_SRC_ENV ?= $(C_SRC_DIR)/env.mk
 # Targets
 .PHONY: all get_deps compile_nif clean_nif cpplint cppcheck
 
-all: $(NIF)
+all: compile_nif $(NIF)
 
 get_deps:
 	@./build_deps.sh

@@ -1,0 +1,82 @@
+name: Precompile and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            otp: 25.0
+            elixir: 1.14
+          - os: macos-latest
+            otp: 25.0
+            elixir: 1.14
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{ matrix.otp }}
+        elixir-version: ${{ matrix.elixir }}
+
+    - name: Restore dependencies cache
+      uses: actions/cache@v3
+      with:
+        path: deps
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-mix-
+
+    - name: Install dependencies
+      run: mix deps.get
+
+    - name: Compile
+      run: MIX_ENV=prod mix compile
+
+    - name: Run tests
+      run: mix test
+
+    - name: Precompile
+      run: |
+        mkdir -p priv
+        MIX_ENV=prod mix elixir_make.precompile
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./_build/prod/lib/seu_projeto/priv/seu_projeto.so
+        asset_name: seu_projeto-${{ runner.os }}.so
+        asset_content_type: application/octet-stream
+
+    - name: Generate Checksum
+      run: |
+        MIX_ENV=prod mix elixir_make.checksum --all --ignore-unavailable
+        
+    - name: Commit Checksum
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: "Update checksum for ${{ github.ref }}"
+        file_pattern: checksum-*.exs
