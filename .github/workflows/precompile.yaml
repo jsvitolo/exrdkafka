@@ -5,108 +5,101 @@ on:
     tags:
       - 'v*'
 
-env:
-  MIX_ENV: "prod"
-  ELIXIR_MAKE_CACHE_DIR: ${{ github.workspace }}/cache
+permissions:
+  contents: write
 
 jobs:
-  precompile:
-    name: Precompile on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+  linux:
+    runs-on: ubuntu-latest
+    env:
+      MIX_ENV: prod
     strategy:
-      fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            elixir: 1.14.x
-            otp: 25.x
-          - os: ubuntu-latest
-            elixir: 1.14.x
-            otp: 26.x
-          - os: macos-11
-            elixir: '1.14.5'
-            otp: '25.1'
-          - os: macos-11
-            elixir: '1.14.5'
-            otp: '26.0'
+        otp_version: [25.3.2.8]
+    
+    name: Linux GNU - OTP ${{ matrix.otp_version }}
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
+      - uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{ matrix.otp }}
-          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp_version }}
+          elixir-version: 1.16.2
 
-      - name: Restore dependencies cache
-        uses: actions/cache@v3
-        with:
-          path: deps
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
-
-      - name: Install system dependencies
-        if: runner.os == 'Linux'
+      - name: Install system dependecies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc make curl tar librdkafka-dev libsasl2-dev liblz4-dev libzstd-dev libcurl4-openssl-dev zlib1g-dev libssl-dev libcrypto++-dev
+          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip \
+            gcc g++ librdkafka-dev libsasl2-dev liblz4-dev libzstd-dev libcurl4-openssl-dev zlib1g-dev libssl-dev libcrypto++-dev
 
-      - name: Install system dependencies
-        if: runner.os == 'macOS'
-        run: brew install librdkafka
-
-      - name: Get dependencies
-        run: mix deps.get
-
-      - name: Pre-compile NIF library
+      - name: Precompile
         run: |
+          export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
           mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
+          mix deps.get
           mix elixir_make.precompile
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: precompiled-nifs-${{ matrix.os }}
-          path: ${{ env.ELIXIR_MAKE_CACHE_DIR }}/*.tar.gz
-
-  release:
-    needs: precompile
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
-        with:
-          otp-version: 26.x
-          elixir-version: 1.14.x
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v3
-        with:
-          path: artifacts
-
-      - name: Move artifacts to cache directory
-        run: |
-          mkdir -p cache
-          find artifacts -name '*.tar.gz' -exec mv {} cache/ \;
-
-      - name: Generate Checksum
-        run: |
-          mix deps.get
-          MIX_ENV=prod mix elixir_make.checksum --all --ignore-unavailable
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            cache/*.tar.gz
-            checksum-*.exs
+            cache/adbc*.tar.gz
+            cache/adbc*.sha256
 
-      - name: Commit Checksum
-        uses: stefanzweifel/git-auto-commit-action@v4
+  macos:
+    runs-on: macos-12
+    env:
+      MIX_ENV: prod
+      elixir_version: "1.16.2"
+    strategy:
+      matrix:
+        job:
+          - { otp_version: "25.3.2.8", elixir: "1.16.2" }
+
+    name: macOS - OTP ${{ matrix.job.otp_version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install erlang and elixir
+        run: |
+          export ROOT_DIR=$(pwd)
+
+          mkdir -p ./cache/otp
+          curl -fSL https://github.com/cocoa-xu/otp-build/releases/download/v${{ matrix.job.otp_version }}/otp-x86_64-apple-darwin.tar.gz -o ./cache/otp/otp-v${{ matrix.job.otp_version }}-x86_64-apple-darwin.tar.gz
+          cd ./cache/otp
+          tar -xzf otp-v${{ matrix.job.otp_version }}-x86_64-apple-darwin.tar.gz
+          cd ${ROOT_DIR}
+
+          export PATH=$(pwd)/cache/otp/usr/local/bin:$(pwd)/./cache/elixir/elixir-${{ matrix.job.elixir }}/bin:${PATH}
+          export ERL_ROOTDIR=$(pwd)/cache/otp/usr/local/lib/erlang
+
+          mkdir -p ./cache/elixir
+          curl -fSL https://github.com/elixir-lang/elixir/archive/refs/tags/v${{ matrix.job.elixir }}.tar.gz -o ./cache/elixir/elixir-${{ matrix.job.elixir }}.tar.gz
+          cd ./cache/elixir
+          tar -xzf elixir-${{ matrix.job.elixir }}.tar.gz
+          cd elixir-${{ matrix.job.elixir }}
+          make compile
+          make -j$(sysctl -n hw.ncpu) install
+
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Precompile
+        run: |
+          export PATH=$(pwd)/cache/otp/usr/local/bin:$(pwd)/./cache/elixir/elixir-${{ matrix.job.elixir }}/bin:${PATH}
+          export ERL_ROOTDIR=$(pwd)/cache/otp/usr/local/lib/erlang
+          export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
+          mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
+          mix deps.get
+          mix elixir_make.precompile
+
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          commit_message: "Update checksum for ${{ github.ref }}"
-          file_pattern: checksum-*.exs
+          files: |
+            cache/exrdkafka*.tar.gz
+            cache/exrdkafka*.sha256
