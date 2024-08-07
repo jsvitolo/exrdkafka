@@ -45,8 +45,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            cache/adbc*.tar.gz
-            cache/adbc*.sha256
+            cache/exrdkafka*.tar.gz
+            cache/exrdkafka*.sha256
 
   macos:
     runs-on: macos-12

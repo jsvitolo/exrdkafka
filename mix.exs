@@ -2,6 +2,7 @@ defmodule Exrdkafka.MixProject do
   use Mix.Project
 
   @version "0.1.0"
+  @github_url "https://github.com/jsvitolo/exrdkafka"
 
   def project do
     [
@@ -20,7 +21,7 @@ defmodule Exrdkafka.MixProject do
 
       # Configuração para pré-compilação
       make_precompiler: {:nif, CCPrecompiler},
-      make_precompiler_url: "https://github.com/jsvitolo/exrdkafka/releases/download/v#{@version}/@{artefact_filename}",
+      make_precompiler_url: "#{@github_url}/releases/download/v#{@version}/@{artefact_filename}",
       make_precompiler_filename: "exrdkafka_nif",
       make_precompiler_priv_paths: ["exrdkafka_nif.*"],
 
@@ -66,6 +67,24 @@ defmodule Exrdkafka.MixProject do
       {:jason, "~> 1.4"},
       {:elixir_make, "~> 0.8", runtime: false},
       {:cc_precompiler, "~> 0.1.0", runtime: false, github: "cocoa-xu/cc_precompiler"}
+    ]
+  end
+
+  def package do
+    [
+      files: [
+        "lib",
+        "c_src",
+        "Makefile",
+        "mix.exs",
+        "README.md",
+        "LICENSE",
+        "checksum-*.exs",
+        "VERSION"
+      ],
+      description: "Elixir Kafka client NIF for librdkafka",
+      licenses: ["MIT"],
+      links: %{"GitHub" => @github_url}
     ]
   end
 end
