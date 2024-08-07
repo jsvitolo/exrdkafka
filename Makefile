@@ -1,22 +1,28 @@
-CPUS=`getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu`
-
-get_deps:
-	@./build_deps.sh
-
-compile_nif: get_deps
-	@make V=0 -C c_src -j $(CPUS)
-
-all: $(C_SRC_OUTPUT)
-
-clean_nif:
-	@make -C c_src clean
+PUS := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
+PRIV_DIR := $(MIX_APP_PATH)/priv
+NIF_SO := $(PRIV_DIR)/exrdkafka_nif.so
 
 C_SRC_DIR = $(shell pwd)/c_src
 C_SRC_ENV ?= $(C_SRC_DIR)/env.mk
 
-#regenerate all the time the env.mk
-ifneq ($(wildcard $(C_SRC_DIR)),)
-	GEN_ENV ?= $(shell erl -noshell -s init stop -eval "file:write_file(\"$(C_SRC_ENV)\", \
+.PHONY: all get_deps compile_nif clean_nif generate_env
+
+all: compile_nif
+
+get_deps:
+	@./build_deps.sh
+
+compile_nif: get_deps generate_env
+	@mkdir -p $(PRIV_DIR)
+	@$(MAKE) -C c_src -j $(CPUS)
+
+clean_nif:
+	@$(MAKE) -C c_src clean
+	@rm -f $(NIF_SO)
+
+generate_env:
+	@erl -noshell -s init stop -eval " \
+		file:write_file(\"$(C_SRC_ENV)\", \
 		io_lib:format( \
 			\"ERTS_INCLUDE_DIR ?= ~s/erts-~s/include/~n\" \
 			\"ERL_INTERFACE_INCLUDE_DIR ?= ~s~n\" \
@@ -24,11 +30,9 @@ ifneq ($(wildcard $(C_SRC_DIR)),)
 			[code:root_dir(), erlang:system_info(version), \
 			code:lib_dir(erl_interface, include), \
 			code:lib_dir(erl_interface, lib)])), \
-		halt().")
-    $(GEN_ENV)
-endif
+		halt()."
 
-include $(C_SRC_ENV)
+-include $(C_SRC_ENV)
 
 cpplint:
 	cpplint --counting=detailed \
