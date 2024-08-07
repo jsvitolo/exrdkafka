@@ -2,12 +2,9 @@ PROJECT_NIF_NAME := exrdkafka_nif
 CURDIR := $(shell pwd)
 BASEDIR := $(abspath $(CURDIR)/..)
 
-PRIV_DIR = $(MIX_APP_PATH)/priv
-C_SRC_DIR = $(CURDIR)
-C_SRC_ENV ?= $(C_SRC_DIR)/env.mk
-C_SRC_OUTPUT ?= $(PRIV_DIR)/$(PROJECT_NIF_NAME).so
+C_SRC_OUTPUT ?= $(CURDIR)/$(PROJECT_NIF_NAME).so
 
-include $(C_SRC_ENV)
+include $(CURDIR)/env.mk
 
 # System type and C compiler/flags.
 UNAME_SYS := $(shell uname -s)
@@ -27,6 +24,7 @@ ifeq ($(UNAME_SYS_LOWCASE), darwin)
                -L$(LZ4_ROOT)/lib \
                -L$(ZSTD_ROOT)/lib \
                -L/usr/local/lib
+    # Remove -undefined suppress flag
     LDFLAGS += -Wl,-U,_enif_alloc \
                -Wl,-U,_enif_free \
                -Wl,-U,_enif_alloc_resource \
@@ -80,7 +78,6 @@ ifeq ($(UNAME_SYS_LOWCASE), darwin)
                -Wl,-U,_enif_get_uint \
                -Wl,-U,_enif_make_list_cell \
                -Wl,-U,_enif_make_reverse_list
-    LDFLAGS += -flat_namespace -undefined suppress
 else ifeq ($(UNAME_SYS_LOWCASE), linux)
     LDFLAGS += -Wl,--exclude-libs=ALL
 endif
@@ -117,15 +114,15 @@ cpp_verbose = $(cpp_verbose_$(V))
 link_verbose_0 = @echo " LD    " $(@F);
 link_verbose = $(link_verbose_$(V))
 
-SOURCES := $(shell find $(C_SRC_DIR) -type f \( -name "*.c" -o -name "*.C" -o -name "*.cc" -o -name "*.cpp" \))
+SOURCES := $(shell find $(CURDIR) -type f \( -name "*.c" -o -name "*.C" -o -name "*.cc" -o -name "*.cpp" \))
 OBJECTS = $(addsuffix .o, $(basename $(SOURCES)))
 
 COMPILE_C = $(c_verbose) $(CC) $(CFLAGS) $(CPPFLAGS) -c
 COMPILE_CPP = $(cpp_verbose) $(CXX) $(CXXFLAGS) $(CPPFLAGS) -c
 
 $(C_SRC_OUTPUT): $(OBJECTS)
-	@mkdir -p $(PRIV_DIR)
-	$(link_verbose) $(CXX) $(OBJECTS) $(LDFLAGS) -o $(C_SRC_OUTPUT)
+	@mkdir -p $(dir $@)
+	$(link_verbose) $(CXX) $(OBJECTS) $(LDFLAGS) -o $@
 
 %.o: %.c
 	$(COMPILE_C) $(OUTPUT_OPTION) $<
@@ -141,4 +138,3 @@ $(C_SRC_OUTPUT): $(OBJECTS)
 
 clean:
 	@rm -f $(C_SRC_OUTPUT) $(OBJECTS)
-	@rm -f $(C_SRC_ENV)

@@ -1,24 +1,32 @@
 PUS := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
+BASEDIR := $(shell pwd)
+MIX_APP_PATH ?= $(BASEDIR)/_build/dev/lib/exrdkafka
 PRIV_DIR := $(MIX_APP_PATH)/priv
 NIF_SO := $(PRIV_DIR)/exrdkafka_nif.so
-
-C_SRC_DIR = $(shell pwd)/c_src
+C_SRC_DIR := $(BASEDIR)/c_src
+C_SRC_NIF := $(C_SRC_DIR)/exrdkafka_nif.so
 C_SRC_ENV ?= $(C_SRC_DIR)/env.mk
 
-.PHONY: all get_deps compile_nif clean_nif generate_env
+.PHONY: all get_deps compile_nif clean_nif generate_env copy_nif
 
-all: compile_nif
+all: compile_nif copy_nif
 
 get_deps:
 	@./build_deps.sh
 
 compile_nif: get_deps generate_env
 	@mkdir -p $(PRIV_DIR)
-	@$(MAKE) -C c_src -j $(CPUS)
+	@$(MAKE) -C $(C_SRC_DIR) -j $(CPUS)
+
+copy_nif: compile_nif
+	@mkdir -p $(PRIV_DIR)
+	@cp $(C_SRC_NIF) $(NIF_SO)
+	@echo "NIF copied to $(NIF_SO)"
 
 clean_nif:
-	@$(MAKE) -C c_src clean
+	@$(MAKE) -C $(C_SRC_DIR) clean
 	@rm -f $(NIF_SO)
+	@echo "Cleaned NIF files"
 
 generate_env:
 	@erl -noshell -s init stop -eval " \
