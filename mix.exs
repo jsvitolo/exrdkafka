@@ -6,12 +6,12 @@ defmodule Exrdkafka.MixProject do
       app: :exrdkafka,
       version: "0.1.0",
       elixir: "~> 1.14",
-      compilers: [:elixir_make | Mix.compilers()],
+      # compilers: [:elixir_make | Mix.compilers()],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps(),
-      make_targets: ["compile_nif"],
-      make_clean: ["clean_nif"],
+      deps: deps()
+      # make_targets: ["all"],
+      # make_clean: ["clean"],
     ]
   end
 
