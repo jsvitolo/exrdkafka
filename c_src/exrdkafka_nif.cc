@@ -123,6 +123,7 @@ static ErlNifFunc nif_funcs[] =
     {"produce", 7, enif_produce},
     {"produce_sync", 7, enif_produce_sync},
     {"produce_batch", 3, enif_produce_batch},
+    {"produce_sync_batch", 3, enif_produce_sync_batch},
     {"get_metadata", 1, enif_get_metadata, ERL_NIF_DIRTY_JOB_IO_BOUND},
     {"get_partitions_count", 2, enif_get_partitions_count, ERL_NIF_DIRTY_JOB_IO_BOUND},
 

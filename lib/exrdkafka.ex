@@ -236,6 +236,24 @@ defmodule Exrdkafka do
     end
   end
 
+  def produce_sync_batch(client_id, topic, messages) do
+    case CacheClient.get(client_id) do
+      {:ok, client_ref, _client_pid} ->
+        messages = Enum.map(messages, fn msg ->
+          {msg.key, msg.value, msg.partition || -1}
+        end)
+        case ExrdkafkaNif.produce_sync_batch(client_ref, topic, messages) do
+          {:ok, count} -> {:ok, count}
+          {:error, reason} -> {:error, ErrorConverter.get_readable_error(reason)}
+        end
+      :undefined ->
+        {:error, :err_undefined_client}
+      error ->
+        error
+    end
+  end
+
+
   def get_readable_error(error), do: ErrorConverter.get_readable_error(error)
 
   defp produce_blocking(client_ref, topic_name, partition, key, value, headers, timestamp) do
