@@ -553,7 +553,8 @@ ERL_NIF_TERM enif_produce_sync(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
     return ATOMS.atomOk;
 }
 
-ERL_NIF_TERM enif_produce_batch(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM enif_produce_batch(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
     UNUSED(argc);
 
     exrdkafka_data* data = static_cast<exrdkafka_data*>(enif_priv_data(env));
@@ -561,14 +562,25 @@ ERL_NIF_TERM enif_produce_batch(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
     enif_producer* producer;
     std::string topic_name;
 
-    if(!enif_get_resource(env, argv[0], data->res_producer,  reinterpret_cast<void**>(&producer)))
+    if(!enif_get_resource(env, argv[0], data->res_producer, reinterpret_cast<void**>(&producer)))
         return make_badarg(env);
 
     if(!get_string(env, argv[1], &topic_name))
         return make_badarg(env);
 
+    rd_kafka_topic_t* rkt = rd_kafka_topic_new(producer->kf, topic_name.c_str(), NULL);
+    if (!rkt)
+        return make_error(env, "Failed to create topic object");
+
     ERL_NIF_TERM list = argv[2];
+    unsigned int list_length;
+
+    if (!enif_get_list_length(env, list, &list_length))
+        return make_badarg(env);
+
+    std::vector<rd_kafka_message_t> messages(list_length);
     ERL_NIF_TERM head;
+    int i = 0;
 
     while(enif_get_list_cell(env, list, &head, &list)) {
         const ERL_NIF_TERM* tuple;
@@ -577,23 +589,39 @@ ERL_NIF_TERM enif_produce_batch(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
         if(!enif_get_tuple(env, head, &arity, &tuple) || arity != 3)
             return make_badarg(env);
 
-        std::string key;
-        std::string value;
+        ErlNifBinary key, value;
         int partition;
 
-        if(!get_string(env, tuple[0], &key) || !get_string(env, tuple[1], &value) || !enif_get_int(env, tuple[2], &partition))
+        if(!enif_inspect_binary(env, tuple[0], &key) ||
+           !enif_inspect_binary(env, tuple[1], &value) ||
+           !enif_get_int(env, tuple[2], &partition))
             return make_badarg(env);
 
-        rd_kafka_producev(
-            producer->kf,
-            RD_KAFKA_V_TOPIC(topic_name.c_str()),
-            RD_KAFKA_V_PARTITION(partition),
-            RD_KAFKA_V_MSGFLAGS(RD_KAFKA_MSG_F_COPY),
-            RD_KAFKA_V_KEY((void*)key.data(), key.size()),
-            RD_KAFKA_V_VALUE((void*)value.data(), value.size()),
-            RD_KAFKA_V_END
-        );
+        messages[i].payload = value.data;
+        messages[i].len = value.size;
+        messages[i].key = key.data;
+        messages[i].key_len = key.size;
+        messages[i].partition = partition;
+        messages[i]._private = NULL;
+        
+        i++;
     }
 
-    return ATOMS.atomOk;
+    int batch_size = rd_kafka_produce_batch(rkt, RD_KAFKA_PARTITION_UA, 
+                                            RD_KAFKA_MSG_F_COPY,
+                                            messages.data(), messages.size());
+
+    rd_kafka_topic_destroy(rkt);
+
+    if (batch_size == -1) {
+        return make_error(env, rd_kafka_err2str(rd_kafka_last_error()));
+    }
+
+    // Flush to ensure all messages are sent
+    rd_kafka_resp_err_t flush_err = rd_kafka_flush(producer->kf, 10000);  // 10 second timeout
+    if (flush_err != RD_KAFKA_RESP_ERR_NO_ERROR) {
+        return make_error(env, rd_kafka_err2str(flush_err));
+    }
+
+    return enif_make_tuple2(env, ATOMS.atomOk, enif_make_int(env, batch_size));
 }
